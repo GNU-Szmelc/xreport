@@ -1,0 +1,56 @@
+#!/bin/bash
+
+# Function to handle Ctrl+C (SIGINT)
+cleanup() {
+    echo "Process interrupted. Sending partial log..."
+    echo "[Interrupted]" >> "$LOG_FILE"
+    send_log
+    exit 1
+}
+
+# Function to send log to Discord webhook
+send_log() {
+    curl -H "Content-Type: multipart/form-data" -F "content=@$LOG_FILE" $WEBHOOK_URL
+}
+
+# Check if a command is provided
+if [ "$#" -eq 0 ]; then
+    echo "No command provided. Exiting."
+    exit 1
+fi
+
+# Handle Ctrl+C (SIGINT)
+trap cleanup SIGINT
+
+# File to store the log
+LOG_FILE="$HOME/log.txt"
+
+# Discord webhook URL
+WEBHOOK_URL="WEBHOOK-URL"
+
+# Check for --no-timeout flag
+TIMEOUT_DURATION=10
+if [[ " $* " == *" --no-timeout "* ]]; then
+    TIMEOUT_DURATION=0
+    # Remove the --no-timeout flag from the arguments
+    set -- "${@/--no-timeout/}"
+fi
+
+# Log the command
+echo "Executing Command: $@" > "$LOG_FILE"
+
+# Execute the command with timeout and redirect output to log file
+{ timeout $TIMEOUT_DURATION "$@"; } >> "$LOG_FILE" 2>&1
+
+# Append basic system info to the log file
+{
+    echo "Date and Time: $(date)"
+    #echo "User@Host: $(whoami)@$(hostname)"
+    neofetch --stdout --disable logo
+} >> "$LOG_FILE"
+
+# Send the log
+send_log
+clear
+echo "Log sent succesfully!"
+echo "You can find it at ~/log.txt"
