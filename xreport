@@ -26,7 +26,7 @@ trap cleanup SIGINT
 LOG_FILE="$HOME/log.txt"
 
 # Discord webhook URL
-WEBHOOK_URL="WEBHOOK-URL"
+WEBHOOK_URL="[URL]"
 
 # Check for --no-timeout flag
 TIMEOUT_DURATION=10
@@ -40,17 +40,24 @@ fi
 echo "Executing Command: $@" > "$LOG_FILE"
 
 # Execute the command with timeout and redirect output to log file
-{ timeout $TIMEOUT_DURATION "$@"; } >> "$LOG_FILE" 2>&1
+{
+    if [ $TIMEOUT_DURATION -eq 0 ]; then
+        bash -c "$@"
+    else
+        timeout $TIMEOUT_DURATION bash -c "$@"
+    fi
+} >> "$LOG_FILE" 2>&1
 
 # Append basic system info to the log file
 {
     echo "Date and Time: $(date)"
-    #echo "User@Host: $(whoami)@$(hostname)"
+    echo "User@Host: $(whoami)@$(hostname)"
     neofetch --stdout --disable logo
 } >> "$LOG_FILE"
 
 # Send the log
 send_log
+
 clear
 echo "Log sent succesfully!"
 echo "You can find it at ~/log.txt"
